@@ -1,0 +1,14 @@
+# Certificates and keys must never be committed
+*.pfx
+*.cer
+*.pem
+*.key
+
+# Downloaded tools / packages
+*.nupkg
+tools/
+
+# Logs and temp
+*.log
+Thumbs.db
+desktop.ini
