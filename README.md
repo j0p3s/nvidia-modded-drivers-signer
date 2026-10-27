@@ -16,6 +16,7 @@ NVCleanstall (and manual edits, e.g. adding a laptop GPU hardware ID) change `nv
 - Downloads **Inf2Cat** automatically (WDK NuGet package, only once)
 - Creates a self-signed code-signing certificate (10 years) and trusts it in *Trusted Root* and *Trusted Publishers*
 - Generates a new `.cat` with Inf2Cat and signs it (PowerShell `Set-AuthenticodeSignature`, falls back to `signtool` downloaded automatically)
+- **Sign ALL INF packages** mode: runs several Inf2Cat jobs in parallel (configurable, 1-8) and signs every new `.cat` in a single call
 - Drag and drop a folder onto the path box
 - Exports the certificate as `.cer` so you can trust it on other PCs
 - Live log and progress bar
@@ -29,7 +30,7 @@ NVCleanstall (and manual edits, e.g. adding a laptop GPU hardware ID) change `nv
 
 ## Usage
 
-1. Download `nvidia modded drivers signer (v1.0.0).cmd`.
+1. Download `nvidia modded drivers signer (v1.1.0).cmd`.
 2. Double-click it and accept the UAC prompt.
 3. Select (or drop) the extracted modded driver folder, the one NVCleanstall produced, containing `Display.Driver\nv_dispi.inf`.
 4. Press **Detect GPU** (or type your device ID, for example `DEV_2518`).
@@ -46,6 +47,10 @@ pnputil /add-driver "C:\path\to\Display.Driver\nv_dispi.inf" /install
 |---|---|---|
 | Keep only my GPU INF | On | Deletes every other `.inf` and its `.cat` in the folder. Irreversible, a confirmation is shown first. |
 | Trust certificate on this PC | On | Adds the certificate to the LocalMachine *Root* and *TrustedPublisher* stores. |
+| Sign ALL INF packages (parallel) | Off | Signs every INF package found in the folder instead of only your GPU INF. Disables "Keep only my GPU INF" and does not need a GPU device ID. |
+| Parallel jobs | min(4, CPU cores) | How many Inf2Cat processes run at the same time. Only helps when there are several packages; set it to 1 if you ever see odd Inf2Cat errors. |
+
+> With "Keep only my GPU INF" there is normally a single package, so there is nothing to parallelize: the time is dominated by Inf2Cat hashing the driver files.
 
 ## Where things are stored
 
@@ -70,7 +75,7 @@ pnputil /add-driver "C:\path\to\Display.Driver\nv_dispi.inf" /install
 
 ## Version
 
-Current version: **v1.0.0** (the version is part of the file name). See [CHANGELOG.md](CHANGELOG.md).
+Current version: **v1.1.0** (the version is part of the file name). See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
