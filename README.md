@@ -19,7 +19,7 @@ NVCleanstall (and manual edits, e.g. adding a laptop GPU hardware ID) change `nv
 - **Sign ALL INF packages** mode: runs several Inf2Cat jobs in parallel (configurable, 1-8) and signs every new `.cat` in a single call
 - Drag and drop a folder onto the path box
 - Exports the certificate as `.cer` so you can trust it on other PCs
-- Live log and progress bar
+- Live log, **elapsed timer, percentage and estimated time remaining (ETA)**; the estimate learns from your previous runs
 
 ## Requirements
 
@@ -30,7 +30,7 @@ NVCleanstall (and manual edits, e.g. adding a laptop GPU hardware ID) change `nv
 
 ## Usage
 
-1. Download `nvidia modded drivers signer (v1.1.0).cmd`.
+1. Download `nvidia modded drivers signer (v1.2.0).cmd`.
 2. Double-click it and accept the UAC prompt.
 3. Select (or drop) the extracted modded driver folder, the one NVCleanstall produced, containing `Display.Driver\nv_dispi.inf`.
 4. Press **Detect GPU** (or type your device ID, for example `DEV_2518`).
@@ -57,6 +57,7 @@ pnputil /add-driver "C:\path\to\Display.Driver\nv_dispi.inf" /install
 | Item | Location |
 |---|---|
 | Downloaded tools (Inf2Cat, optional signtool) | `C:\ProgramData\NvidiaModdedDriversSigner\tools` |
+| Learned Inf2Cat speed (for the ETA) | `C:\ProgramData\NvidiaModdedDriversSigner\stats.json` |
 | Exported certificate | `C:\ProgramData\NvidiaModdedDriversSigner\NvidiaModdedDriversSigner.cer` |
 | Signing certificate (private key) | `Cert:\LocalMachine\My`, subject `CN=NVIDIA Modded Drivers Signer` |
 
@@ -75,7 +76,7 @@ pnputil /add-driver "C:\path\to\Display.Driver\nv_dispi.inf" /install
 
 ## Version
 
-Current version: **v1.1.0** (the version is part of the file name). See [CHANGELOG.md](CHANGELOG.md).
+Current version: **v1.2.0** (the version is part of the file name). See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

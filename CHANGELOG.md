@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.0 - 2026-10-28
+
+- Live elapsed timer, progress percentage and estimated time remaining (ETA) next to the progress bar.
+- The progress bar is now determinate (it was an endless animation).
+- ETA covers every phase: scan, tool download (uses the real download speed), cleanup, certificate, Inf2Cat and signing.
+- Inf2Cat time is estimated from the driver size and the speed measured in previous runs (saved in `stats.json`), so it gets more accurate over time.
+- "Finished in mm:ss" / "Stopped after mm:ss" shown when the run ends.
+
 ## v1.1.0 - 2026-10-27
 
 - New "Sign ALL INF packages (parallel)" mode.
