@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.3.0 - 2026-10-30
+
+- **MakeCat is now the default catalog engine** (was Inf2Cat). Reason: in the v2.2.2 engine test MakeCat "all files" (20.9 s) and libwdi "all files" were ACCEPTED by Windows (pnputil, no signature errors in setupapi.dev.log), while Inf2Cat takes minutes. Inf2Cat stays available in the dropdown as the fallback.
+- No other change.
+
 ## v2.2.2 - 2026-10-30
 
 Found with the v2.2.1 report: with `nvngx_dlssd.dl_` hashed as stored under the name `nvngx_dlssd.dll`, Windows still said *Catalog did not contain file hash* for `nvngx_dlssd.dll`. Windows checks a compressed file as the **expanded** file.

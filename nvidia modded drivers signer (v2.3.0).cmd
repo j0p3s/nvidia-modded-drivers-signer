@@ -15,7 +15,7 @@ exit /b
 #    4. signs the .cat with a local self-signed certificate and trusts it
 # ============================================================================
 $ErrorActionPreference = 'Stop'
-$global:AppVersion  = '2.2.2'
+$global:AppVersion  = '2.3.0'
 $global:AppName     = 'NVIDIA Modded Drivers Signer'
 $global:CertSubject = 'CN=NVIDIA Modded Drivers Signer'
 $global:WorkDir     = Join-Path $env:ProgramData 'NvidiaModdedDriversSigner'
@@ -1964,7 +1964,7 @@ function global:Start-Signing {
     $fast = ($global:chkFast.Checked -and (-not $all))
     $jobs = [int]$global:nudJobs.Value
     $eIdx = $global:cbEngine.SelectedIndex
-    if ($eIdx -lt 0 -or $eIdx -ge $global:EngineIds.Count) { $eIdx = [array]::IndexOf($global:EngineIds, 'inf2cat') }
+    if ($eIdx -lt 0 -or $eIdx -ge $global:EngineIds.Count) { $eIdx = [array]::IndexOf($global:EngineIds, 'makecat') }
     $engine = $global:EngineIds[$eIdx]
     $engineName = $global:EngineNames[$eIdx]
     $custom = ($engine -ne 'inf2cat')
@@ -2405,12 +2405,12 @@ $global:cbEngine = New-Object Windows.Forms.ComboBox
 $global:cbEngine.Location = New-Object Drawing.Point(500, 266); $global:cbEngine.Size = New-Object Drawing.Size(270, 22)
 $global:cbEngine.Anchor = 'Top,Right'; $global:cbEngine.DropDownStyle = 'DropDownList'
 $global:cbEngine.BackColor = $panel; $global:cbEngine.ForeColor = $fg; $global:cbEngine.FlatStyle = 'Flat'
-[void]$global:cbEngine.Items.Add('MakeCat (experimental)')
+[void]$global:cbEngine.Items.Add('MakeCat (default)')
 [void]$global:cbEngine.Items.Add('libwdi-style, native (experimental)')
 [void]$global:cbEngine.Items.Add('generate-cat-file via WSL (experimental)')
 [void]$global:cbEngine.Items.Add('Inf2Cat (standard)')
 # the standard, proven engine stays the default selection
-$global:cbEngine.SelectedIndex = [array]::IndexOf($global:EngineIds, 'inf2cat')
+$global:cbEngine.SelectedIndex = [array]::IndexOf($global:EngineIds, 'makecat')
 $form.Controls.Add($global:cbEngine)
 $global:chkKeep = New-Object Windows.Forms.CheckBox
 $global:chkKeep.Text = 'Keep only my GPU INF (others moved to backup; no setup.exe)'
@@ -2451,7 +2451,7 @@ $global:chkFiles.Anchor = 'Top,Right'; $global:chkFiles.Checked = $true; $global
 $form.Controls.Add($global:chkFiles)
 $global:tt = New-Object Windows.Forms.ToolTip
 $global:tt.SetToolTip($global:chkFiles, 'MakeCat / libwdi-style / generate-cat-file only: the shared catalog also gets the hash of every file of the driver folder (the files the INFs list and the ones copied as whole directories, e.g. ngx-builtins). Each file is hashed once. Windows checks every file it copies against the catalog; one missing hash and it shows the "can''t verify the publisher" prompt. Off = INF hash only (faster, but Windows rejects it when the INF copies files).')
-$global:tt.SetToolTip($global:cbEngine, 'Inf2Cat is the standard Microsoft tool. The other engines are experimental alternatives that do not parse the INF. Use "Test all engines" to compare them on your files.')
+$global:tt.SetToolTip($global:cbEngine, 'MakeCat is the default: with Hash all driver files it was ACCEPTED by Windows in the engine test (about 20 s instead of minutes). Inf2Cat is the standard Microsoft tool and the fallback. The other engines are experimental alternatives that do not parse the INF. Use "Test all engines" to compare them on your files.')
 $global:btnTools = New-Button 'Download tools' 660 288 110 28 $false
 $global:btnTools.Anchor = 'Top,Right'
 $global:btnTools.Add_Click({
