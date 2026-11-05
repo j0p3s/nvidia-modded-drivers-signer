@@ -195,3 +195,6 @@ Current version: **v2.3.0** (the version is part of the file name). See [CHANGEL
 ## License
 
 [MIT](LICENSE). The license applies only to the code and documentation in this repository, not to third-party software mentioned above.
+
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/j0p3s)
