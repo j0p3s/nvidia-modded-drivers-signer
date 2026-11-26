@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.4.0 - 2026-11-26
+
+- **New option: Add my GPU to the INF if it is not listed** (on by default). When no INF in the folder contains your `VEN_10DE&DEV_xxxx` (for example a laptop GPU such as `DEV_24DC` in an INF without laptop IDs), the tool now adds it: it finds the most similar GPU that the INF lists with a plain `%NVIDIA_DEV.xxxx%` entry (same first two hex digits, nearest ID), clones that entry in every INF block (so the same driver section is used) and adds a name string. Then it signs as usual. Before, this case stopped with *No .inf in that folder contains VEN_10DE&DEV_xxxx*.
+- The original INF is copied to `<driver folder>_original_INF_backup` before it is changed. The change is limited to the added lines; every other byte of the INF stays identical.
+- To choose the donor GPU yourself, type it in the GPU box: `DEV_24DC from DEV_2484`.
+- Applies to the normal run and to *Test all engines*. Not used with *Sign ALL INF packages*.
+- Not tested on Windows by the author of this change: the INF edit was checked against a real NVIDIA INF (driver 32.0.16.2140), the PowerShell code was not run.
+
 ## v2.3.0 - 2026-10-30
 
 - **MakeCat is now the default catalog engine** (was Inf2Cat). Reason: in the v2.2.2 engine test MakeCat "all files" (20.9 s) and libwdi "all files" were ACCEPTED by Windows (pnputil, no signature errors in setupapi.dev.log), while Inf2Cat takes minutes. Inf2Cat stays available in the dropdown as the fallback.

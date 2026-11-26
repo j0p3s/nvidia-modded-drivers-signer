@@ -29,7 +29,7 @@ NVCleanstall (and manual edits, for example adding a laptop GPU hardware ID) cha
 
 - Dark, simple GUI (batch + PowerShell WinForms, one `.cmd` file)
 - Detects your NVIDIA GPU (`VEN_10DE&DEV_xxxx`) or lets you type the device ID
-- Finds the `.inf` files that contain your GPU
+- Finds the `.inf` files that contain your GPU; if none does, can add your GPU to the INF (v2.4.0, original backed up)
 - **Fast mode:** only the GPU INFs are processed, in tiny temporary packages. Inf2Cat: one catalog per INF (`<name>_nvsigner.cat`), run in parallel. Experimental engines: **one shared catalog per driver folder** (`<folder>_nvsigner.cat`), so a file that several INFs list is hashed only once
 - Option to target only the Windows version running on this PC (much faster)
 - Four selectable **catalog engines**, listed in this order: **MakeCat**, **libwdi-style** (native CryptCAT API), **generate-cat-file** (via WSL) and **Inf2Cat** (Microsoft's standard tool, the fallback). **MakeCat is the default selection** since v2.3.0. The first three are experimental alternatives that do not parse the INF
@@ -56,7 +56,7 @@ NVCleanstall (and manual edits, for example adding a laptop GPU hardware ID) cha
 
 > **Want to run the NVIDIA `setup.exe`?** Leave "Keep only my GPU INF" **off**. The installer needs every INF/CAT of the package and shows "Required files are missing" otherwise.
 
-1. Download `nvidia modded drivers signer (v2.3.0).cmd`.
+1. Download `nvidia modded drivers signer (v2.4.0).cmd`.
 2. Double-click it and accept the UAC prompt.
 3. Select (or drop) the extracted modded driver folder, the one NVCleanstall produced, containing `Display.Driver\nv_dispi.inf`.
 4. Press **Detect GPU** (or type your device ID, for example `DEV_2518`).
@@ -190,7 +190,7 @@ To remove everything else, delete `C:\ProgramData\NvidiaModdedDriversSigner`. To
 
 ## Version
 
-Current version: **v2.3.0** (the version is part of the file name). See [CHANGELOG.md](CHANGELOG.md).
+Current version: **v2.4.0** (the version is part of the file name). See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
