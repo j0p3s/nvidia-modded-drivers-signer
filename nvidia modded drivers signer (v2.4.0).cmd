@@ -15,7 +15,7 @@ exit /b
 #    4. signs the .cat with a local self-signed certificate and trusts it
 # ============================================================================
 $ErrorActionPreference = 'Stop'
-$global:AppVersion  = '2.3.0'
+$global:AppVersion  = '2.4.0'
 $global:AppName     = 'NVIDIA Modded Drivers Signer'
 $global:CertSubject = 'CN=NVIDIA Modded Drivers Signer'
 $global:WorkDir     = Join-Path $env:ProgramData 'NvidiaModdedDriversSigner'
@@ -62,7 +62,7 @@ function global:Set-Marquee($on) {
 }
 
 function global:Set-Busy($busy) {
-    foreach ($c in @($global:btnStart, $global:btnBrowse, $global:btnDetect, $global:btnTools, $global:tbDir, $global:cbGpu, $global:chkKeep, $global:chkTrust, $global:chkAll, $global:nudJobs, $global:chkFast, $global:chkOS, $global:cbEngine, $global:chkFiles, $global:btnTest)) { $c.Enabled = (-not $busy) }
+    foreach ($c in @($global:btnStart, $global:btnBrowse, $global:btnDetect, $global:btnTools, $global:tbDir, $global:cbGpu, $global:chkKeep, $global:chkTrust, $global:chkAll, $global:nudJobs, $global:chkFast, $global:chkOS, $global:chkAddId, $global:cbEngine, $global:chkFiles, $global:btnTest)) { $c.Enabled = (-not $busy) }
     if (-not $busy -and $global:chkAll.Checked) { $global:chkKeep.Enabled = $false; $global:chkFast.Enabled = $false }
     if ($busy) { $global:StopRequested = $false }
     if ($global:btnStop) { $global:btnStop.Enabled = $busy }
@@ -1359,6 +1359,82 @@ function global:Find-GpuInf($root, $dev) {
     return $hits
 }
 
+# Adds a GPU that the INF does not list (for example a laptop GPU in a desktop INF) by cloning the entry of the
+# most similar GPU that the INF does list (same section = same driver install). The original INF is copied to
+# <driver folder>_original_INF_backup first. Returns the list of INF files that were changed.
+# Syntax in the GPU box to choose the donor yourself:  DEV_24DC from DEV_2484
+$global:KnownGpuNames = @{ '24DC' = 'NVIDIA GeForce RTX 3080 Laptop GPU' }
+
+function global:Add-GpuToInf($root, $dev, $donorWanted) {
+    $changed = @()
+    $enc = [Text.Encoding]::GetEncoding(28591)   # Latin-1: every byte maps 1:1, so untouched parts of the INF stay byte-identical
+    $devInt = [Convert]::ToInt32($dev, 16)
+    $rxPlain = '(?im)^[ \t]*%NVIDIA_DEV\.([0-9A-F]{4})%[ \t]*=[ \t]*[A-Za-z0-9_.]+[ \t]*,[ \t]*PCI\\VEN_10DE&DEV_\1[ \t]*\r?$'
+    $bak = $root + '_original_INF_backup'
+    foreach ($f in @(Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -ieq '.inf' })) {
+        try { $bytes = [IO.File]::ReadAllBytes($f.FullName) } catch { continue }
+        if ($bytes.Length -lt 4 -or ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) -or ($bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF)) { continue }   # UTF-16 INF: not an NVIDIA display INF
+        $txt = $enc.GetString($bytes)
+        $ids = @{}
+        foreach ($m in [regex]::Matches($txt, $rxPlain)) { $ids[$m.Groups[1].Value.ToUpper()] = $true }
+        if ($ids.Count -eq 0) { continue }
+        if ($txt -match ('(?i)VEN_10DE&DEV_' + $dev)) { continue }
+        $donor = $null
+        if ($donorWanted) {
+            if ($ids.ContainsKey($donorWanted.ToUpper())) { $donor = $donorWanted.ToUpper() }
+            else { Write-UiLog ("  {0}: DEV_{1} (donor you asked for) has no plain entry in this INF - skipped." -f $f.Name, $donorWanted); continue }
+        } else {
+            $best = $null
+            foreach ($k in $ids.Keys) {
+                $v = [Convert]::ToInt32($k, 16)
+                $score = [Math]::Abs($v - $devInt)
+                if (($v -shr 8) -ne ($devInt -shr 8)) { $score += 100000 }   # prefer the same ID family (same first two hex digits)
+                if ($best -eq $null -or $score -lt $best.Score) { $best = @{ Id = $k; Score = $score } }
+            }
+            $donor = $best.Id
+        }
+        $name = $global:KnownGpuNames[$dev.ToUpper()]
+        if (-not $name) { $name = 'NVIDIA GPU (DEV_' + $dev.ToUpper() + ')' }
+        $rxDon = '(?i)^[ \t]*%NVIDIA_DEV\.' + $donor + '%[ \t]*=[ \t]*[A-Za-z0-9_.]+[ \t]*,[ \t]*PCI\\VEN_10DE&DEV_' + $donor + '[ \t]*\r?$'
+        $rxStr = '(?i)^[ \t]*NVIDIA_DEV\.' + $donor + '[ \t]*=[ \t]*"'
+        $sb = New-Object System.Text.StringBuilder
+        $nEntry = 0; $nStr = 0
+        foreach ($ln in [regex]::Split($txt, '(?<=\n)')) {
+            if ($ln.Length -eq 0) { continue }
+            $eol = ''
+            if ($ln.EndsWith("`r`n")) { $eol = "`r`n" } elseif ($ln.EndsWith("`n")) { $eol = "`n" }
+            [void]$sb.Append($ln)
+            if ($eol -eq '') { if ($ln -match $rxDon -or $ln -match $rxStr) { [void]$sb.Append("`r`n"); $eol = "`r`n" } }
+            if ($ln -match $rxDon) {
+                $newLn = $ln.TrimEnd("`r", "`n")
+                $newLn = $newLn -ireplace ('(?<=NVIDIA_DEV\.)' + $donor), $dev.ToUpper()
+                $newLn = $newLn -ireplace ('(?<=VEN_10DE&DEV_)' + $donor), $dev.ToUpper()
+                [void]$sb.Append($newLn).Append($eol); $nEntry++
+            } elseif ($ln -match $rxStr) {
+                [void]$sb.Append('NVIDIA_DEV.' + $dev.ToUpper() + ' = "' + $name + '"').Append($eol); $nStr++
+            }
+        }
+        if ($nEntry -eq 0) { continue }
+        $rel = $f.FullName.Substring($root.Length).TrimStart('\')
+        $dst = Join-Path $bak $rel
+        if (-not (Test-Path -LiteralPath $dst)) {
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dst) | Out-Null
+            Copy-Item -LiteralPath $f.FullName -Destination $dst -Force
+        }
+        [IO.File]::WriteAllBytes($f.FullName, $enc.GetBytes($sb.ToString()))
+        Write-UiLog ("  {0}: added DEV_{1} (copied from DEV_{2}: {3} entr{4}, {5} name string(s))" -f $f.Name, $dev.ToUpper(), $donor, $nEntry, $(if ($nEntry -eq 1) { 'y' } else { 'ies' }), $nStr)
+        $changed += $f
+    }
+    if ($changed.Count -gt 0) { Write-UiLog ("Original INF(s) saved in: " + $bak) }
+    return $changed
+}
+
+function global:Get-DonorWanted {
+    $t = $global:cbGpu.Text
+    if ($t -match '(?i)\bfrom\s+(?:DEV_)?([0-9A-F]{4})\b') { return $Matches[1].ToUpper() }
+    return $null
+}
+
 function global:Get-SigningCert {
     $c = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.Subject -eq $global:CertSubject -and $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date).AddDays(30) } | Sort-Object NotAfter -Descending | Select-Object -First 1
     if (-not $c) {
@@ -1683,6 +1759,11 @@ function global:Start-EngineTest {
         Start-Plan @{ scan = 8; tools = 0; cert = 5; test = 60 }
         Set-Status 'Scanning INF files...'
         $hits = @(Find-GpuInf $rootFull $dev)
+        if ($hits.Count -eq 0 -and $global:chkAddId.Checked) {
+            Write-UiLog "VEN_10DE&DEV_$dev is not listed in any INF - adding it (cloning the entry of the most similar GPU)..."
+            $addedInf = @(Add-GpuToInf $rootFull $dev (Get-DonorWanted))
+            if ($addedInf.Count -gt 0) { $hits = @(Find-GpuInf $rootFull $dev) }
+        }
         if ($hits.Count -eq 0) { throw "No .inf in that folder contains VEN_10DE&DEV_$dev. Check the device ID and the folder." }
         $infos = @()
         $scanNotes = New-Object System.Collections.ArrayList
@@ -1982,6 +2063,7 @@ function global:Start-Signing {
     if ($custom) { $msg += "$engineName is EXPERIMENTAL (catalog scope: $scopeTxt). The catalogs are checked with signtool afterwards, but test one INF with pnputil before trusting them (or use 'Test all engines').`n`n" }
     if ($all) { $msg += "Mode: sign ALL INF packages in this folder ($jobs parallel Inf2Cat jobs).`n`n" }
     else      { $msg += "GPU: VEN_10DE&DEV_$dev`n`n" }
+    if ((-not $all) -and $global:chkAddId.Checked) { $msg += "If this GPU is not listed in the INF, it will be ADDED (the entry of the most similar GPU is cloned). The original INF is copied to:`n${rootFull}_original_INF_backup`n`n" }
     if ($keepOnly) { $msg += "All other .inf and .cat files will be MOVED to:`n${rootFull}_removed_INF_backup`nOnly the INF containing your GPU is kept and signed.`nNOTE: the NVIDIA setup.exe will NOT work with this option (install with pnputil / Device Manager).`n`n" }
     $msg += 'Continue?'
     if ([System.Windows.Forms.MessageBox]::Show($msg, $global:AppName, 'YesNo', 'Question') -ne 'Yes') { return }
@@ -2008,6 +2090,11 @@ function global:Start-Signing {
             Write-UiLog ("Found {0} INF file(s)." -f $hits.Count)
         } else {
             $hits = @(Find-GpuInf $rootFull $dev)
+            if ($hits.Count -eq 0 -and $global:chkAddId.Checked) {
+                Write-UiLog "VEN_10DE&DEV_$dev is not listed in any INF - adding it (cloning the entry of the most similar GPU)..."
+                $addedInf = @(Add-GpuToInf $rootFull $dev (Get-DonorWanted))
+                if ($addedInf.Count -gt 0) { $hits = @(Find-GpuInf $rootFull $dev) }
+            }
             if ($hits.Count -eq 0) {
                 throw "No .inf in that folder contains VEN_10DE&DEV_$dev. Check the device ID (Device Manager > GPU > Details > Hardware Ids) and the folder."
             }
@@ -2398,6 +2485,11 @@ $global:chkOS.Text = "Target only this PC's Windows version (much faster)"
 $global:chkOS.Location = New-Object Drawing.Point(20, 264); $global:chkOS.Size = New-Object Drawing.Size(470, 22)
 $global:chkOS.Checked = $true; $global:chkOS.ForeColor = $fg
 $form.Controls.Add($global:chkOS)
+$global:chkAddId = New-Object Windows.Forms.CheckBox
+$global:chkAddId.Text = 'Add my GPU to the INF if it is not listed (original INF backed up)'
+$global:chkAddId.Location = New-Object Drawing.Point(20, 286); $global:chkAddId.Size = New-Object Drawing.Size(470, 22)
+$global:chkAddId.Checked = $true; $global:chkAddId.ForeColor = $fg
+$form.Controls.Add($global:chkAddId)
 $lblEng = New-Label 'Catalog engine:' 500 250 270 16
 $lblEng.Anchor = 'Top,Right'
 $form.Controls.Add($lblEng)
